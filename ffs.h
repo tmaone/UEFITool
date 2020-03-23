@@ -292,7 +292,7 @@ UINT8                   Type;
 UINT8                   Attributes;
 UINT8                   Size[3]; // Set to 0xFFFFFF
 UINT8                   State;
-UINT32                  ExtendedSize;
+UINT64                  ExtendedSize;
 } EFI_FFS_FILE_HEADER2;
 
 // Standard data checksum, used if FFS_ATTRIB_CHECKSUM is clear
@@ -314,6 +314,8 @@ UINT32                  ExtendedSize;
 #define EFI_FV_FILETYPE_FIRMWARE_VOLUME_IMAGE   0x0B
 #define EFI_FV_FILETYPE_COMBINED_SMM_DXE        0x0C
 #define EFI_FV_FILETYPE_SMM_CORE                0x0D
+#define EFI_FV_FILETYPE_SMM_STANDALONE          0x0E
+#define EFI_FV_FILETYPE_SMM_CORE_STANDALONE     0x0F
 #define EFI_FV_FILETYPE_OEM_MIN                 0xC0
 #define EFI_FV_FILETYPE_OEM_MAX                 0xDF
 #define EFI_FV_FILETYPE_DEBUG_MIN               0xE0
@@ -326,12 +328,16 @@ UINT32                  ExtendedSize;
 #define FFS_ATTRIB_TAIL_PRESENT       0x01 // Valid only for revision 1 volumes
 #define FFS_ATTRIB_RECOVERY           0x02 // Valid only for revision 1 volumes
 #define FFS_ATTRIB_LARGE_FILE         0x01 // Valid only for FFSv3 volumes
+#define FFS_ATTRIB_DATA_ALIGNMENT2    0x02 // Valid only for revision 2 volumes
 #define FFS_ATTRIB_FIXED              0x04
 #define FFS_ATTRIB_DATA_ALIGNMENT     0x38
 #define FFS_ATTRIB_CHECKSUM           0x40
 
 // FFS alignment table
 extern const UINT8 ffsAlignmentTable[];
+
+// Extended FFS alignment table
+extern const UINT8 ffsAlignment2Table[];
 
 // File states
 #define EFI_FILE_HEADER_CONSTRUCTION    0x01
@@ -340,6 +346,7 @@ extern const UINT8 ffsAlignmentTable[];
 #define EFI_FILE_MARKED_FOR_UPDATE      0x08
 #define EFI_FILE_DELETED                0x10
 #define EFI_FILE_HEADER_INVALID         0x20
+#define EFI_FILE_ERASE_POLARITY         0x80 // Defined as "all other bits must be set to ERASE_POLARITY" in UEFI PI
 
 // PEI apriori file
 const QByteArray EFI_PEI_APRIORI_FILE_GUID
@@ -360,7 +367,9 @@ const QByteArray EFI_FFS_PAD_FILE_GUID
 // FFS size conversion routines
 extern VOID uint32ToUint24(UINT32 size, UINT8* ffsSize);
 extern UINT32 uint24ToUint32(const UINT8* ffsSize);
-// FFS file 8bit checksum calculation routine
+
+// FFS file 8bit checksum calculation routines
+extern UINT8 calculateSum8(const UINT8* buffer, UINT32 bufferSize);
 extern UINT8 calculateChecksum8(const UINT8* buffer, UINT32 bufferSize);
 
 //*****************************************************************************
@@ -459,6 +468,9 @@ const QByteArray EFI_GUIDED_SECTION_TIANO // A31280AD-481E-41B6-95E8-127F4C98477
 const QByteArray EFI_GUIDED_SECTION_LZMA // EE4E5898-3914-4259-9D6E-DC7BD79403CF
 ("\x98\x58\x4E\xEE\x14\x39\x59\x42\x9D\x6E\xDC\x7B\xD7\x94\x03\xCF", 16);
 
+const QByteArray EFI_GUIDED_SECTION_LZMAF86 //D42AE6BD-1352-4BFB-909A-CA72A6EAE889
+("\xbd\xe6\x2a\xd4\x52\x13\xfb\x4b\x90\x9a\xca\x72\xa6\xea\xe8\x89", 16);
+
 const QByteArray EFI_FIRMWARE_CONTENTS_SIGNED_GUID //0F9D89E8-9259-4F76-A5AF-0C89E34023DF
 ("\xE8\x89\x9D\x0F\x59\x92\x76\x4F\xA5\xAF\x0C\x89\xE3\x40\x23\xDF", 16);
 
@@ -528,7 +540,7 @@ typedef EFI_COMMON_SECTION_HEADER2 EFI_FIRMWARE_VOLUME_IMAGE_SECTION2;
 typedef EFI_COMMON_SECTION_HEADER  EFI_USER_INTERFACE_SECTION;
 typedef EFI_COMMON_SECTION_HEADER2 EFI_USER_INTERFACE_SECTION2;
 
-//Section routines
+// Section routines
 extern UINT32 sizeOfSectionHeader(const EFI_COMMON_SECTION_HEADER* header);
 
 //*****************************************************************************
